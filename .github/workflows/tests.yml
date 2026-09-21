@@ -49,3 +49,5 @@ jobs:
         run: python tests/synthetic_replay.py
       - name: Stress-event replay
         run: python tests/stress_event_report_replay.py
+      - name: Telegram button UI replay
+        run: python tests/bot_ui_replay.py

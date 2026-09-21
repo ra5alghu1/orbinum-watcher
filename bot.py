@@ -16,6 +16,7 @@ EVENTS_FILE = os.getenv("ORBINUM_EVENTS_FILE", "/var/lib/orbinum-monitor/events.
 TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 PAIR_CODE = os.environ["TELEGRAM_PAIR_CODE"]
 VALIDATOR_NAME = os.getenv("ORBINUM_VALIDATOR_NAME", "robotek8-orbinum")
+DASHBOARD_URL = os.getenv("ORBINUM_DASHBOARD_URL", "https://orbinum-watcher.xyz")
 
 API = f"https://api.telegram.org/bot{TOKEN}/"
 KZ_TZ = timezone(timedelta(hours=5))
@@ -32,11 +33,43 @@ def telegram(method, data=None, timeout=35):
         return json.loads(response.read().decode())
 
 
-def send(chat_id, text):
+def main_keyboard():
+    return {
+        "keyboard": [
+            [{"text": "🟢 Status"}, {"text": "📊 Uptime"}],
+            [{"text": "🚨 Incidents"}, {"text": "🧭 Diagnostics"}],
+            [{"text": "🌐 Dashboard"}],
+        ],
+        "resize_keyboard": True,
+        "is_persistent": True,
+        "input_field_placeholder": "Choose a monitor view",
+    }
+
+
+def send(chat_id, text, reply_markup=None):
     try:
-        telegram("sendMessage", {"chat_id": chat_id, "text": text})
+        data = {"chat_id": chat_id, "text": text}
+        if reply_markup is not None:
+            data["reply_markup"] = json.dumps(reply_markup, ensure_ascii=False)
+        telegram("sendMessage", data)
     except Exception as exc:
         print("Telegram send error:", exc, flush=True)
+
+
+def send_menu(chat_id, text="🛰 Orbinum Validator Monitor"):
+    send(chat_id, text, main_keyboard())
+
+
+def send_dashboard(chat_id):
+    send(
+        chat_id,
+        "🌐 Public Orbinum Watcher dashboard",
+        {
+            "inline_keyboard": [
+                [{"text": "Open dashboard", "url": DASHBOARD_URL}],
+            ]
+        },
+    )
 
 
 def load_owner():
@@ -341,7 +374,10 @@ def handle_message(message):
             return
 
         save_owner(chat_id)
-        send(chat_id, "✅ Orbinum Validator Monitor paired.\n\nCommands:\n/status\n/uptime\n/incidents\n/diag")
+        send_menu(
+            chat_id,
+            "✅ Orbinum Validator Monitor paired.\n\nUse the buttons below; slash commands still work.",
+        )
         print("Paired with chat:", chat_id, flush=True)
         return
 
@@ -353,18 +389,39 @@ def handle_message(message):
         send(chat_id, "⛔ Private monitoring bot.")
         return
 
+    actions = {
+        "/status": "status",
+        "🟢 Status": "status",
+        "/uptime": "uptime",
+        "📊 Uptime": "uptime",
+        "/incidents": "incidents",
+        "🚨 Incidents": "incidents",
+        "/diag": "diagnostics",
+        "/diagnostics": "diagnostics",
+        "🧭 Diagnostics": "diagnostics",
+        "🌐 Dashboard": "dashboard",
+    }
+
     if text in ("/start", "/help"):
-        send(chat_id, "🛰 Orbinum Validator Monitor\n\n/status — current validator state\n/uptime — uptime statistics\n/incidents — recent outages\n/diag — latest Windows/Docker diagnostic")
-    elif text == "/status":
-        send(chat_id, status_text())
-    elif text == "/uptime":
-        send(chat_id, uptime_text())
-    elif text == "/incidents":
-        send(chat_id, incidents_text())
-    elif text in ("/diag", "/diagnostics"):
-        send(chat_id, diagnostics_text())
+        send_menu(
+            chat_id,
+            "🛰 Orbinum Validator Monitor\n\nTap a button for the current view. Slash commands remain available.",
+        )
+        return
+
+    action = actions.get(text)
+    if action == "status":
+        send(chat_id, status_text(), main_keyboard())
+    elif action == "uptime":
+        send(chat_id, uptime_text(), main_keyboard())
+    elif action == "incidents":
+        send(chat_id, incidents_text(), main_keyboard())
+    elif action == "diagnostics":
+        send(chat_id, diagnostics_text(), main_keyboard())
+    elif action == "dashboard":
+        send_dashboard(chat_id)
     else:
-        send(chat_id, "Commands:\n/status\n/uptime\n/incidents\n/diag")
+        send_menu(chat_id, "Choose an action:")
 
 
 def check_alerts():
