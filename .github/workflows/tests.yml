@@ -20,6 +20,7 @@ jobs:
         run: |
           python -m py_compile \
             bot.py \
+            agent/linux_ops_bot.py \
             agent/windows_telemetry.py \
             agent/windows_event_sync.py \
             analysis/anomaly_detector.py \
@@ -51,3 +52,5 @@ jobs:
         run: python tests/stress_event_report_replay.py
       - name: Telegram button UI replay
         run: python tests/bot_ui_replay.py
+      - name: Linux ops bot replay
+        run: python tests/linux_ops_bot_replay.py
