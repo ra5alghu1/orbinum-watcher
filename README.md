@@ -305,3 +305,25 @@ See [ROADMAP.md](ROADMAP.md).
 ## License
 
 No license has been selected yet. All rights remain with the repository owner until a license is added.
+
+
+### Universal Telegram infrastructure panel
+
+The home-side Telegram process can be replaced with the read-only
+`agent/linux_ops_bot.py` panel. It keeps a single Telegram long-polling client
+and summarizes the whole personal stack instead of controlling services.
+
+Buttons:
+
+```text
+[ 🟢 Infrastructure ]
+[ 🛰 Orbinum ] [ ⚡ Rialo ]
+[ 🖥 VPS ]     [ 🌿 Canopy ]
+[ 🚨 Alerts ]  [ 📊 Dashboard ]
+```
+
+The panel reads host CPU/RAM/disk/uptime locally, Orbinum RPC and the external
+watcher API, Rialo systemd state plus the latest balance-guard journal entry,
+VPS reachability, the Orbinum reverse P2P port, and Canopy port 9001.
+
+It intentionally exposes no start/stop/restart actions.
