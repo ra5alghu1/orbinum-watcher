@@ -106,13 +106,17 @@ error
 
 Private Telegram bot for operational alerts and quick status checks.
 
-Commands:
+The private bot exposes a persistent mobile button panel:
 
 ```text
-/status
-/uptime
-/incidents
+[ 🟢 Status ]      [ 📊 Uptime ]
+[ 🚨 Incidents ]   [ 🧭 Diagnostics ]
+[       🌐 Dashboard       ]
 ```
+
+The buttons provide the same read-only views as the legacy slash commands, which
+remain available for compatibility. The Dashboard button returns a URL button
+instead of exposing monitoring internals in Telegram.
 
 It also sends automatic offline, degraded and recovery notifications.
 
