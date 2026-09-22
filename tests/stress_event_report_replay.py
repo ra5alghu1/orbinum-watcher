@@ -69,6 +69,24 @@ def combined_load():
     return rows
 
 
+def docker_recovery():
+    error = (
+        "metrics: unavailable | docker stats: cannot connect to the docker daemon | "
+        "docker inspect: cannot connect to the docker daemon"
+    )
+    rows = [row(ts, error=error) for ts in range(0, 16, 5)]
+    rows.extend(row(ts) for ts in range(20, 41, 5))
+    return rows
+
+
+def docker_still_down():
+    error = (
+        "metrics: unavailable | docker stats: cannot connect to the docker daemon | "
+        "docker inspect: cannot connect to the docker daemon"
+    )
+    return [row(ts, error=error) for ts in range(0, 21, 5)]
+
+
 def main():
     assert mod.build_stress_events(normal()) == [], "normal telemetry created a stress event"
     events = mod.build_stress_events(combined_load())
@@ -81,6 +99,16 @@ def main():
     assert e.max_finality_gap == 9
     assert e.min_peers == 8
     assert e.recovered is True
+    recovered = mod.build_stress_events(docker_recovery())
+    docker = next(e for e in recovered if "docker_engine_unavailable" in e.kinds)
+    assert docker.recovered is True, "Docker incident stayed open after healthy telemetry resumed"
+
+    active = mod.build_stress_events(docker_still_down())
+    docker = next(e for e in active if "docker_engine_unavailable" in e.kinds)
+    assert docker.recovered is False, "active Docker incident was closed prematurely"
+
+    print("PASS Docker failure -> healthy sample closes incident")
+    print("PASS ongoing Docker failure -> incident remains open")
     print("PASS normal -> no load events")
     print("PASS combined load -> one grouped event")
     print("  signals:", ", ".join(e.kinds))
