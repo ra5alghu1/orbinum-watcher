@@ -209,7 +209,11 @@ def build_stress_events(
         if restart_delta is not None and restart_delta < 0:
             restart_delta = None
 
-        recovered = latest_ts >= end + pad_after_s
+        # An anomaly segment that ends at the newest sample is still active.  It is
+        # recovered only when telemetry continued after the anomaly ended.
+        # Comparing against end + pad_after_s made a stale/finished segment look
+        # open for the rest of the reporting window when sample cadence was sparse.
+        recovered = latest_ts > end
 
         summary = ", ".join(kinds)
         out.append(
