@@ -20,12 +20,27 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+try:
+    from orbinum_lifecycle import lifecycle_snapshot, transition
+except ModuleNotFoundError:  # direct file import used by repo-level replay tests
+    import importlib.util
+    _lifecycle_path = Path(__file__).with_name("orbinum_lifecycle.py")
+    _lifecycle_spec = importlib.util.spec_from_file_location("orbinum_lifecycle", _lifecycle_path)
+    if _lifecycle_spec is None or _lifecycle_spec.loader is None:
+        raise
+    _lifecycle = importlib.util.module_from_spec(_lifecycle_spec)
+    _lifecycle_spec.loader.exec_module(_lifecycle)
+    lifecycle_snapshot = _lifecycle.lifecycle_snapshot
+    transition = _lifecycle.transition
+
 RPC_URL = os.getenv("ORBINUM_RPC_URL", "http://127.0.0.1:9944")
 ENV_FILE = Path(os.getenv("OPS_BOT_ENV_FILE", "/home/rasalghul/orbinum-watcher/.env"))
 WATCHER_API = os.getenv("ORBINUM_WATCHER_API", "https://orbinum-watcher.xyz/api/status")
 DASHBOARD_URL = os.getenv("ORBINUM_DASHBOARD_URL", "https://orbinum-watcher.xyz")
 VPS_HOST = os.getenv("OPS_VPS_HOST", "169.58.246.105")
 CHECK_INTERVAL = int(os.getenv("OPS_CHECK_INTERVAL", "30"))
+VALIDATOR_ACCOUNT = os.getenv("ORBINUM_VALIDATOR_ACCOUNT", "")
+LIFECYCLE_STATE_FILE = Path(os.getenv("ORBINUM_LIFECYCLE_STATE_FILE", "/home/rasalghul/orbinum-watcher/.validator-lifecycle.json"))
 
 RIALO_SERVICES = (
     "rialo-edge-gateway.service",
@@ -263,6 +278,12 @@ def orbinum_snapshot() -> dict[str, Any]:
     except Exception as exc:
         data["error"] = str(exc)
 
+    if VALIDATOR_ACCOUNT:
+        try:
+            data["lifecycle"] = lifecycle_snapshot(rpc, VALIDATOR_ACCOUNT)
+        except Exception as exc:
+            data["lifecycle_error"] = str(exc)
+
     try:
         external = http_json(WATCHER_API)
         data["external_state"] = external.get("ui_state")
@@ -407,6 +428,70 @@ def infrastructure_text(snapshot: dict[str, Any] | None = None) -> str:
     )
 
 
+def lifecycle_label(data: dict[str, Any]) -> str:
+    life = data.get("lifecycle")
+    if not isinstance(life, dict):
+        return "—"
+    labels = {"candidate": "CANDIDATE", "approved": "APPROVED / WAITING", "active": "ACTIVE VALIDATOR"}
+    return labels.get(str(life.get("state")), "—")
+
+
+def read_lifecycle_state() -> str | None:
+    try:
+        value = json.loads(LIFECYCLE_STATE_FILE.read_text(encoding="utf-8"))
+        state = value.get("state")
+        return state if isinstance(state, str) else None
+    except (OSError, ValueError, TypeError):
+        return None
+
+
+def write_lifecycle_state(state: str) -> None:
+    LIFECYCLE_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tmp = LIFECYCLE_STATE_FILE.with_suffix(".tmp")
+    tmp.write_text(json.dumps({"state": state, "updated_at": int(time.time())}) + "\n", encoding="utf-8")
+    tmp.replace(LIFECYCLE_STATE_FILE)
+
+
+def check_validator_lifecycle() -> None:
+    if not VALIDATOR_ACCOUNT:
+        return
+    try:
+        life = lifecycle_snapshot(rpc, VALIDATOR_ACCOUNT)
+    except Exception as exc:
+        print("Validator lifecycle check error:", exc, flush=True)
+        return
+
+    current = str(life["state"])
+    previous = read_lifecycle_state()
+    event = transition(previous, current)
+    write_lifecycle_state(current)
+
+    short = VALIDATOR_ACCOUNT[:8] + "…" + VALIDATOR_ACCOUNT[-6:]
+    if event == "approved":
+        send_message(
+            "🟡 ORBINUM VALIDATOR APPROVED\n\n"
+            f"Account: {short}\n"
+            "Added to approvedValidators.\n"
+            "Waiting for session activation.",
+            main_keyboard(),
+        )
+    elif event == "activated":
+        send_message(
+            "🟢 ORBINUM VALIDATOR ACTIVATED\n\n"
+            f"Account: {short}\n"
+            "Account entered session.validators.\n"
+            "The node is now in the active validator set.",
+            main_keyboard(),
+        )
+    elif event == "deactivated":
+        send_message(
+            "🔴 ORBINUM VALIDATOR LEFT ACTIVE SET\n\n"
+            f"Account: {short}\n"
+            f"Current lifecycle state: {current.upper()}.",
+            main_keyboard(),
+        )
+
+
 def orbinum_text() -> str:
     data = orbinum_snapshot()
     return (
@@ -414,6 +499,7 @@ def orbinum_text() -> str:
         f"Node: {'ONLINE' if data['online'] else 'OFFLINE'}\n"
         f"Peers: {fmt_num(data['peers'])}\n"
         f"Syncing: {fmt_num(data['syncing'])}\n"
+        f"Validator: {lifecycle_label(data)}\n"
         f"Best: {fmt_num(data['best'], '#')}\n"
         f"Finalized: {fmt_num(data['finalized'], '#')}\n"
         f"Tunnel service: {data['tunnel_service'].upper()}\n"
@@ -544,6 +630,7 @@ def main() -> None:
         now = time.time()
         if now - last_check >= CHECK_INTERVAL:
             check_state()
+            check_validator_lifecycle()
             last_check = now
         time.sleep(1)
 

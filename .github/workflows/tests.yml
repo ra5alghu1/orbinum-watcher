@@ -21,12 +21,14 @@ jobs:
           python -m py_compile \
             bot.py \
             agent/linux_ops_bot.py \
+            agent/orbinum_lifecycle.py \
             agent/windows_telemetry.py \
             agent/windows_event_sync.py \
             analysis/anomaly_detector.py \
             analysis/stress_event_report.py \
             tests/synthetic_replay.py \
-            tests/stress_event_report_replay.py
+            tests/stress_event_report_replay.py \
+            tests/orbinum_lifecycle_replay.py
       - name: Parse PowerShell deployment scripts
         shell: pwsh
         run: |
@@ -54,3 +56,5 @@ jobs:
         run: python tests/bot_ui_replay.py
       - name: Linux ops bot replay
         run: python tests/linux_ops_bot_replay.py
+      - name: Validator lifecycle replay
+        run: python tests/orbinum_lifecycle_replay.py
