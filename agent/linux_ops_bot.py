@@ -22,8 +22,16 @@ from typing import Any
 
 try:
     from orbinum_lifecycle import lifecycle_snapshot, transition
-except ModuleNotFoundError:  # imported by repo-level replay tests
-    from agent.orbinum_lifecycle import lifecycle_snapshot, transition
+except ModuleNotFoundError:  # direct file import used by repo-level replay tests
+    import importlib.util
+    _lifecycle_path = Path(__file__).with_name("orbinum_lifecycle.py")
+    _lifecycle_spec = importlib.util.spec_from_file_location("orbinum_lifecycle", _lifecycle_path)
+    if _lifecycle_spec is None or _lifecycle_spec.loader is None:
+        raise
+    _lifecycle = importlib.util.module_from_spec(_lifecycle_spec)
+    _lifecycle_spec.loader.exec_module(_lifecycle)
+    lifecycle_snapshot = _lifecycle.lifecycle_snapshot
+    transition = _lifecycle.transition
 
 RPC_URL = os.getenv("ORBINUM_RPC_URL", "http://127.0.0.1:9944")
 ENV_FILE = Path(os.getenv("OPS_BOT_ENV_FILE", "/home/rasalghul/orbinum-watcher/.env"))
