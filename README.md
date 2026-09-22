@@ -326,4 +326,4 @@ The panel reads host CPU/RAM/disk/uptime locally, Orbinum RPC and the external
 watcher API, Rialo systemd state plus the latest balance-guard journal entry,
 VPS reachability, the Orbinum reverse P2P port, and Canopy port 9001.
 
-It intentionally exposes no start/stop/restart actions.
+It intentionally exposes no start/stop/restart actions.\n\nWhen `ORBINUM_VALIDATOR_ACCOUNT` is set, the Linux panel also reads the chain\'s `validatorSet.approvedValidators` and `session.validators` storage. It shows `CANDIDATE`, `APPROVED / WAITING`, or `ACTIVE VALIDATOR` in the Orbinum view and sends a one-time Telegram notification when the account is approved, enters the active set, or later leaves it. The last observed lifecycle state is persisted locally so service restarts do not repeat old notifications. This is read-only: no extrinsics are submitted.
