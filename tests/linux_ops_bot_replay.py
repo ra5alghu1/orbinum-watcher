@@ -24,7 +24,10 @@ with tempfile.TemporaryDirectory() as tmp:
     assert spec.loader is not None
     spec.loader.exec_module(module)
 
-    assert module.VALIDATOR_ACCOUNT == "5FakeValidatorAccount"\n    assert module.LIFECYCLE_STATE_FILE == Path(tmp) / "lifecycle.json"\n\n    keyboard = module.main_keyboard()
+    assert module.VALIDATOR_ACCOUNT == "5FakeValidatorAccount"
+    assert module.LIFECYCLE_STATE_FILE == Path(tmp) / "lifecycle.json"
+
+    keyboard = module.main_keyboard()
     rows = keyboard["keyboard"]
     assert rows[0][0]["text"] == "🟢 Infrastructure"
     assert rows[1][0]["text"] == "🛰 Orbinum"
