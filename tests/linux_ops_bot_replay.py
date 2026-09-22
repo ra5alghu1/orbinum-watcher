@@ -10,6 +10,7 @@ with tempfile.TemporaryDirectory() as tmp:
     env_file = Path(tmp) / ".env"
     env_file.write_text("BOT_TOKEN=test-token\nCHAT_ID=123\n", encoding="utf-8")
     os.environ["OPS_BOT_ENV_FILE"] = str(env_file)
+    os.environ.pop("ORBINUM_VALIDATOR_ACCOUNT", None)
 
     path = Path(__file__).resolve().parents[1] / "agent" / "linux_ops_bot.py"
     spec = importlib.util.spec_from_file_location("linux_ops_bot", path)
