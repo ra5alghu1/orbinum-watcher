@@ -8,7 +8,13 @@ from pathlib import Path
 
 with tempfile.TemporaryDirectory() as tmp:
     env_file = Path(tmp) / ".env"
-    env_file.write_text("BOT_TOKEN=test-token\nCHAT_ID=123\n", encoding="utf-8")
+    env_file.write_text(
+        "BOT_TOKEN=test-token\n"
+        "CHAT_ID=123\n"
+        "ORBINUM_VALIDATOR_ACCOUNT=5FakeValidatorAccount\n"
+        f"ORBINUM_LIFECYCLE_STATE_FILE={tmp}/lifecycle.json\n",
+        encoding="utf-8",
+    )
     os.environ["OPS_BOT_ENV_FILE"] = str(env_file)
     os.environ.pop("ORBINUM_VALIDATOR_ACCOUNT", None)
 
@@ -18,7 +24,7 @@ with tempfile.TemporaryDirectory() as tmp:
     assert spec.loader is not None
     spec.loader.exec_module(module)
 
-    keyboard = module.main_keyboard()
+    assert module.VALIDATOR_ACCOUNT == "5FakeValidatorAccount"\n    assert module.LIFECYCLE_STATE_FILE == Path(tmp) / "lifecycle.json"\n\n    keyboard = module.main_keyboard()
     rows = keyboard["keyboard"]
     assert rows[0][0]["text"] == "🟢 Infrastructure"
     assert rows[1][0]["text"] == "🛰 Orbinum"
