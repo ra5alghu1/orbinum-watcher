@@ -20,7 +20,10 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from orbinum_lifecycle import lifecycle_snapshot, transition
+try:
+    from orbinum_lifecycle import lifecycle_snapshot, transition
+except ModuleNotFoundError:  # imported by repo-level replay tests
+    from agent.orbinum_lifecycle import lifecycle_snapshot, transition
 
 RPC_URL = os.getenv("ORBINUM_RPC_URL", "http://127.0.0.1:9944")
 ENV_FILE = Path(os.getenv("OPS_BOT_ENV_FILE", "/home/rasalghul/orbinum-watcher/.env"))
