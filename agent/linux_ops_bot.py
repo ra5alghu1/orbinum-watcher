@@ -39,8 +39,6 @@ WATCHER_API = os.getenv("ORBINUM_WATCHER_API", "https://orbinum-watcher.xyz/api/
 DASHBOARD_URL = os.getenv("ORBINUM_DASHBOARD_URL", "https://orbinum-watcher.xyz")
 VPS_HOST = os.getenv("OPS_VPS_HOST", "169.58.246.105")
 CHECK_INTERVAL = int(os.getenv("OPS_CHECK_INTERVAL", "30"))
-VALIDATOR_ACCOUNT = os.getenv("ORBINUM_VALIDATOR_ACCOUNT", "")
-LIFECYCLE_STATE_FILE = Path(os.getenv("ORBINUM_LIFECYCLE_STATE_FILE", "/home/rasalghul/orbinum-watcher/.validator-lifecycle.json"))
 
 RIALO_SERVICES = (
     "rialo-edge-gateway.service",
@@ -68,6 +66,16 @@ def load_env(path: Path = ENV_FILE) -> dict[str, str]:
 ENV = load_env()
 BOT_TOKEN = ENV["BOT_TOKEN"]
 CHAT_ID = str(ENV["CHAT_ID"])
+VALIDATOR_ACCOUNT = os.getenv("ORBINUM_VALIDATOR_ACCOUNT", ENV.get("ORBINUM_VALIDATOR_ACCOUNT", ""))
+LIFECYCLE_STATE_FILE = Path(
+    os.getenv(
+        "ORBINUM_LIFECYCLE_STATE_FILE",
+        ENV.get(
+            "ORBINUM_LIFECYCLE_STATE_FILE",
+            "/home/rasalghul/orbinum-watcher/.validator-lifecycle.json",
+        ),
+    )
+)
 TG_BASE = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 
