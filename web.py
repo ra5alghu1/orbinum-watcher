@@ -11,7 +11,7 @@ VALIDATOR=os.getenv('ORBINUM_VALIDATOR_NAME','robotek8-orbinum')
 PUBLIC=os.getenv('ORBINUM_PUBLIC_URL','https://orbinum-watcher.xyz').rstrip('/')
 STATIC=Path(os.getenv('ORBINUM_STATIC_DIR','/app/static'))
 TG=os.getenv('ORBINUM_TELEGRAM_URL','https://t.me/Ras_a1_Ghu1')
-GH=os.getenv('ORBINUM_GITHUB_URL','https://github.com/robotek8/orbinum-watcher')
+GH=os.getenv('ORBINUM_GITHUB_URL','https://github.com/ra5alghu1/orbinum-watcher')
 KZ=timezone(timedelta(hours=5)); POLL=15; CHECK=60; STALE=180
 
 def db(): return sqlite3.connect(f'file:{DB}?mode=ro',uri=True,timeout=5)
