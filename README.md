@@ -36,6 +36,36 @@ Passive validator-host telemetry:
 
 The external collector currently samples every 60 seconds. Windows-side passive telemetry is collected independently at a shorter interval and does not control the validator.
 
+## Incident history semantics
+
+The dashboard groups the last 30 days of external samples into observed incidents:
+
+- **Metrics unavailable**: fetching metrics failed. This can be a tunnel or network
+  failure; it does not prove that the validator stopped.
+- **No peers / Metrics incomplete / Degraded**: metrics were reachable but the
+  recorded sample was unhealthy.
+- **No observations**: more than 180 seconds passed without a sample. This is
+  missing collector coverage, not measured validator downtime.
+
+A stale incident ends at its last observation with recovery **unknown**. A later
+sample resumes observations; only a healthy sample without a coverage gap marks
+an incident recovered. A change of symptom creates a separate entry. Durations
+are estimates between sample timestamps, clipped at the 30-day boundary; failures
+and recoveries can occur between polls. The most recent ten entries are shown.
+
+This changes incident presentation only. Existing uptime percentages remain
+sample-based and are not the official Orbinum telemetry uptime. The database
+schema, collector, Telegram notifications and validator settings are unchanged.
+`/api/status` retains the original incident fields and adds `kind`, `ending`,
+`started_ts`, `ended_ts` and `duration_seconds`. `ended_ts` is null for an ongoing
+observation; `ending=unknown` never claims recovery.
+
+Offline verification:
+
+```bash
+python -m unittest discover -s tests -p 'test_incident_history.py'
+```
+
 ## Architecture
 
 ```text
