@@ -19,7 +19,7 @@ VALIDATOR_NAME = os.getenv("ORBINUM_VALIDATOR_NAME", "robotek8-orbinum")
 PUBLIC_URL = os.getenv("ORBINUM_PUBLIC_URL", "https://orbinum-watcher.xyz").rstrip("/")
 STATIC_DIR = Path(os.getenv("ORBINUM_STATIC_DIR", "/app/static"))
 
-TELEGRAM_URL = os.getenv("ORBINUM_TELEGRAM_URL", "https://t.me/Ras_a1_Ghu1")
+TELEGRAM_URL = os.getenv("ORBINUM_TELEGRAM_URL", "https://t.me/ra5alghu1")
 GITHUB_URL = os.getenv("ORBINUM_GITHUB_URL", "https://github.com/ra5alghu1/orbinum-watcher")
 
 KZ = timezone(timedelta(hours=5))
@@ -1339,7 +1339,7 @@ def page():
         "__VALIDATOR__": html.escape(VALIDATOR_NAME),
         "__TELEGRAM_URL__": html.escape(TELEGRAM_URL, quote=True),
         "__GITHUB_URL__": html.escape(GITHUB_URL, quote=True),
-        "__X_URL__": html.escape("https://x.com/ra5alghul", quote=True),
+        "__X_URL__": html.escape("https://x.com/ra5alghu1", quote=True),
         "__POLL_MS__": str(POLL_SECONDS * 1000),
     }
 
