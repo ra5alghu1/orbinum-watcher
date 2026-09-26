@@ -51,7 +51,7 @@ A stale incident ends at its last observation with recovery **unknown**. A later
 sample resumes observations; only a healthy sample without a coverage gap marks
 an incident recovered. A change of symptom creates a separate entry. Durations
 are estimates between sample timestamps, clipped at the 30-day boundary; failures
-and recoveries can occur between polls. The most recent ten entries are shown.
+and recoveries can occur between polls. The most recent ten external entries are merged with optional load events; the dashboard shows the twenty newest combined entries.
 
 This changes incident presentation only. Existing uptime percentages remain
 sample-based and are not the official Orbinum telemetry uptime. The database
@@ -65,6 +65,12 @@ Offline verification:
 ```bash
 python -m unittest discover -s tests -p 'test_incident_history.py'
 ```
+
+## Web source and deployment
+
+`web.py` contains the production dashboard, including detailed load events and
+incident observation gaps. See [web deployment and rollback](docs/WEB_DEPLOYMENT.md)
+for required assets, read-only data mounts, validation and targeted updates.
 
 ## Architecture
 

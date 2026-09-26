@@ -12,5 +12,6 @@ services:
       ORBINUM_VALIDATOR_NAME: robotek8-orbinum
     volumes:
       - /var/lib/orbinum-monitor:/data:ro
+      - /opt/orbinum-monitor/static:/app/static:ro
     expose:
       - "8787"
