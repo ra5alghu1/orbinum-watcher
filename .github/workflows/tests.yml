@@ -59,4 +59,4 @@ jobs:
       - name: Validator lifecycle replay
         run: python tests/orbinum_lifecycle_replay.py
       - name: Incident history coverage and recovery
-        run: python -m unittest discover -s tests -p "test_incident_history.py"
+        run: python -m unittest discover -s tests -p "test_*.py"
