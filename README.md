@@ -363,3 +363,23 @@ watcher API, Rialo systemd state plus the latest balance-guard journal entry,
 VPS reachability, the Orbinum reverse P2P port, and Canopy port 9001.
 
 It intentionally exposes no start/stop/restart actions.\n\nWhen `ORBINUM_VALIDATOR_ACCOUNT` is set, the Linux panel also reads the chain\'s `validatorSet.approvedValidators` and `session.validators` storage. It shows `CANDIDATE`, `APPROVED / WAITING`, or `ACTIVE VALIDATOR` in the Orbinum view and sends a one-time Telegram notification when the account is approved, enters the active set, or later leaves it. The last observed lifecycle state is persisted locally so service restarts do not repeat old notifications. This is read-only: no extrinsics are submitted.
+
+### Block progression checks
+
+The minute-by-minute monitor marks a reachable node `degraded` when either
+`best` or `finalized` stays unchanged for at least `ORBINUM_STALL_SECONDS`
+(default: 300 seconds). The reason is stored with the sample, included in the
+existing Telegram degradation alert, and shown in dashboard incident history.
+Both counters are tracked independently using persisted samples; a new monitor
+process does not lose the observation window.
+
+`ORBINUM_PROGRESS_MAX_GAP` (default: 180 seconds) limits the gap between
+observations. Missing required metrics, zero peers, failed requests, longer
+gaps, and counter changes reset the relevant evidence window. A first sample
+cannot prove a stall. After a counter rollback, a fresh window is required.
+Both settings must be positive integers, in seconds. Set them in the monitor's
+service environment; they do not change the validator configuration.
+
+A stall describes observed block heights, not its cause: it may also reflect
+a chain-wide pause. Brief gaps within the allowed interval do not themselves
+trigger an incident. Detection is limited to the sampling frequency.

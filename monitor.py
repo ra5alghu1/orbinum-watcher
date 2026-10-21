@@ -13,6 +13,9 @@ URL = os.getenv("ORBINUM_METRICS_URL", "http://127.0.0.1:19615/metrics")
 CHAIN = os.getenv("ORBINUM_CHAIN", "orbinum_testnet")
 TIMEOUT = float(os.getenv("ORBINUM_HTTP_TIMEOUT", "5"))
 
+STALL_SECONDS = int(os.getenv("ORBINUM_STALL_SECONDS", "300"))
+PROGRESS_MAX_GAP = int(os.getenv("ORBINUM_PROGRESS_MAX_GAP", "180"))
+
 METRIC_LINE = re.compile(r"^(?P<name>[a-zA-Z_:][a-zA-Z0-9_:]*)(?:\{(?P<labels>[^}]*)\})?\s+(?P<value>[-+0-9.eE]+)$")
 LABEL = re.compile(r'([a-zA-Z_][a-zA-Z0-9_]*)="([^"]*)"')
 
@@ -72,6 +75,36 @@ def parse_metrics(text):
     return values
 
 
+def stalled_blocks(con, ts, best, finalized):
+    """Require a continuous run of equal heights, independently per counter.
+
+    Missing metrics, missing peers, gaps and counter changes reset evidence.
+    Read the persisted samples so separate timer invocations share history.
+    """
+    if STALL_SECONDS <= 0 or PROGRESS_MAX_GAP <= 0:
+        raise ValueError("progress thresholds must be positive")
+    rows = con.execute(
+        "SELECT ts, status, peers, best, finalized FROM samples "
+        "WHERE ts < ? AND ts >= ? ORDER BY ts DESC",
+        (ts, ts - STALL_SECONDS - PROGRESS_MAX_GAP),
+    ).fetchall()
+    stalled = []
+    for name, value, column in (("best", best, 3), ("finalized", finalized, 4)):
+        previous = ts
+        for row in rows:
+            stamp, status, peers, old_best, old_finalized = row
+            if (previous - stamp > PROGRESS_MAX_GAP or status == "offline"
+                    or peers is None or peers <= 0
+                    or old_best is None or old_finalized is None
+                    or row[column] != value):
+                break
+            if ts - stamp >= STALL_SECONDS:
+                stalled.append(name)
+                break
+            previous = stamp
+    return stalled
+
+
 def check():
     ts = int(time.time())
     started = time.monotonic()
@@ -109,6 +142,12 @@ def check():
         error = str(exc)
 
     con = connect()
+    if ok:
+        stalled = stalled_blocks(con, ts, best, finalized)
+        if stalled:
+            ok = 0
+            status = "degraded"
+            error = "block progression stalled: " + ", ".join(stalled) + f" (at least {STALL_SECONDS}s)"
     con.execute(
         """
         INSERT OR REPLACE INTO samples
