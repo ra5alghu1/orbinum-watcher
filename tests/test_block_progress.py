@@ -33,6 +33,21 @@ class BlockProgressTests(unittest.TestCase):
         self.sample(60)
         self.assertEqual(self.result(), [])
 
+    def test_long_gap_requires_new_continuous_window(self):
+        # A long observation gap must not be counted as a stalled interval.
+        for ts in (0, 60, 120, 180, 240):
+            self.sample(ts)
+        self.assertEqual(self.result(600), [])
+
+        # Fresh observations after the gap establish a new 300s window.
+        for ts in (600, 660, 720, 780, 840):
+            self.sample(ts)
+        self.assertEqual(self.result(899), [])
+        self.assertEqual(self.result(900), ['best', 'finalized'])
+
+        # Progress in one counter clears only that counter's stall.
+        self.assertEqual(self.result(900, best=101), ['finalized'])
+
     def test_failed_or_incomplete_sample_resets_evidence(self):
         for changes in ({'status': 'offline'}, {'finalized': None}, {'peers': 0}):
             with self.subTest(changes=changes):
