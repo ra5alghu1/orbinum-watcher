@@ -159,7 +159,8 @@ def build_incidents(rows, now, stale=STALE_AFTER_SECONDS):
         active=ending=='ongoing'
         labels={'metrics_unavailable':'Metrics unavailable',
                 'no_peers':'No peers', 'metrics_incomplete':'Metrics incomplete',
-                'degraded':'Degraded', 'observation_gap':'No observations'}
+                'best_stalled':'Best block stalled', 'finalized_stalled':'Finalized block stalled',
+                'blocks_stalled':'Best and finalized stalled', 'degraded':'Degraded', 'observation_gap':'No observations'}
         out.append({'kind':kind, 'started':fmt_time(start),
                     'recovered':fmt_time(end) if ending=='recovered' else '—',
                     'duration':human_duration(end-start), 'duration_seconds':max(0,end-start),
@@ -167,7 +168,9 @@ def build_incidents(rows, now, stale=STALE_AFTER_SECONDS):
                     'status':labels[kind]+' · '+ending.replace('_',' '),
                     'active':active, 'ending':ending})
 
-    for ts,ok,status,peers,best,finalized in rows:
+    for row in rows:
+        ts,ok,status,peers,best,finalized = row[:6]
+        error = row[6] if len(row) > 6 else None
         if previous is not None and ts-previous>stale:
             if current:
                 emit(*current,previous,'unknown'); current=None
@@ -180,6 +183,10 @@ def build_incidents(rows, now, stale=STALE_AFTER_SECONDS):
             kind='metrics_incomplete'
         elif peers<=0:
             kind='no_peers'
+        elif error and error.startswith('block progression stalled:'):
+            counters = error.split(':', 1)[1].split('(', 1)[0].strip()
+            kind = {'best': 'best_stalled', 'finalized': 'finalized_stalled',
+                    'best, finalized': 'blocks_stalled'}.get(counters, 'degraded')
         else:
             kind='degraded'
         if current and current[0]!=kind:
@@ -199,10 +206,10 @@ def incident_rows():
     now=int(time.time()); cutoff=now-2592000
     c=connect()
     try:
-        rows=c.execute('SELECT ts,ok,status,peers,best,finalized FROM samples WHERE ts>=? ORDER BY ts',(cutoff,)).fetchall()
+        rows=c.execute('SELECT ts,ok,status,peers,best,finalized,error FROM samples WHERE ts>=? ORDER BY ts',(cutoff,)).fetchall()
         # Include one boundary sample so a collector stopped over 30 days ago
         # still appears as missing observations rather than a healthy empty list.
-        before=c.execute('SELECT ts,ok,status,peers,best,finalized FROM samples WHERE ts<? ORDER BY ts DESC LIMIT 1',(cutoff,)).fetchone()
+        before=c.execute('SELECT ts,ok,status,peers,best,finalized,error FROM samples WHERE ts<? ORDER BY ts DESC LIMIT 1',(cutoff,)).fetchone()
     finally:c.close()
     if before:rows.insert(0,(cutoff,*before[1:]))
     return build_incidents(rows,now)[-10:][::-1]
@@ -451,6 +458,8 @@ def snapshot():
 
     labels = {'metrics_unavailable': 'Metrics unavailable', 'no_peers': 'No peers',
               'metrics_incomplete': 'Metrics incomplete', 'degraded': 'Degraded',
+              'best_stalled': 'Best block stalled', 'finalized_stalled': 'Finalized block stalled',
+              'blocks_stalled': 'Best and finalized stalled',
               'observation_gap': 'No observations'}
     for event in incident_rows():
         event.update({'sort_ts': event['started_ts'],

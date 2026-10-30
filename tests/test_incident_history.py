@@ -16,6 +16,13 @@ def sample(ts, status='online'):
 
 
 class HistoryTests(unittest.TestCase):
+    def test_stalled_blocks_retain_reason_in_history(self):
+        for reason, kind in [('best', 'best_stalled'), ('finalized', 'finalized_stalled'), ('best, finalized', 'blocks_stalled')]:
+            rows = [(100, 0, 'degraded', 10, 100, 98, f'block progression stalled: {reason} (at least 300s)'), sample(160)]
+            event = web.build_incidents(rows, 170)[0]
+            self.assertEqual(event['kind'], kind)
+            self.assertEqual(event['ending'], 'recovered')
+
     def test_healthy(self):
         self.assertEqual(web.build_incidents([sample(100), sample(160)], 170), [])
 
@@ -59,8 +66,8 @@ class HistoryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = str(Path(tmp) / 'samples.db')
             con = sqlite3.connect(path)
-            con.execute('CREATE TABLE samples(ts INTEGER PRIMARY KEY, ok INTEGER, status TEXT, peers INTEGER, best INTEGER, finalized INTEGER)')
-            con.execute('INSERT INTO samples VALUES(?,?,?,?,?,?)', sample(100))
+            con.execute('CREATE TABLE samples(ts INTEGER PRIMARY KEY, ok INTEGER, status TEXT, peers INTEGER, best INTEGER, finalized INTEGER, error TEXT)')
+            con.execute('INSERT INTO samples VALUES(?,?,?,?,?,?,?)', (*sample(100), None))
             con.commit(); con.close()
             before = Path(path).read_bytes()
             with patch.object(web, 'DB', path), patch.object(web.time, 'time', return_value=3000000):
