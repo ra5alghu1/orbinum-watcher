@@ -55,7 +55,7 @@ as the base for a code-only update, keeping its Python/runtime dependencies:
 mkdir "$backup/build"
 cp "$checkout/web.py" "$backup/build/web.py"
 cp "$checkout/collector_health.py" "$backup/build/collector_health.py"
-printf 'FROM node-orbinum-web:rollback-%s\nCOPY web.py /app/web.py\n' "$deploy_id" > "$backup/build/Dockerfile"
+printf 'FROM node-orbinum-web:rollback-%s\nCOPY web.py collector_health.py /app/\n' "$deploy_id" > "$backup/build/Dockerfile"
 docker build -t "node-orbinum-web:candidate-$deploy_id" "$backup/build"
 ```
 
