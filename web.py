@@ -11,6 +11,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
+from collector_health import collector_health
+
 DB = os.getenv("ORBINUM_DB", "/var/lib/orbinum-monitor/uptime.db")
 HOST = os.getenv("ORBINUM_WEB_HOST", "127.0.0.1")
 PORT = int(os.getenv("ORBINUM_WEB_PORT", "8787"))
@@ -1400,6 +1402,14 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/health":
             body = b"ok\n"
             self.send_payload_headers(200, "text/plain; charset=utf-8", len(body))
+            if not head_only:
+                self.wfile.write(body)
+            return
+
+        if path == "/health/collector":
+            code, payload = collector_health(DB, stale_after=STALE_AFTER_SECONDS)
+            body = json.dumps(payload).encode("utf-8")
+            self.send_payload_headers(code, "application/json; charset=utf-8", len(body))
             if not head_only:
                 self.wfile.write(body)
             return
