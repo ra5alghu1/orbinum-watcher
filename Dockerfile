@@ -2,7 +2,7 @@ FROM python:3.12-alpine
 
 WORKDIR /app
 
-COPY web.py /app/web.py
+COPY web.py collector_health.py /app/
 
 EXPOSE 8787
 

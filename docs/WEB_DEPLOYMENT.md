@@ -43,6 +43,7 @@ deploy_id=YYYYMMDD-HHMMSS
 backup=/root/orbinum-web-backup-$deploy_id
 mkdir -m 700 "$backup"
 cp -p /opt/orbinum-monitor/web.py "$backup/web.py"
+if test -f /opt/orbinum-monitor/collector_health.py; then cp -p /opt/orbinum-monitor/collector_health.py "$backup/collector_health.py"; fi
 docker inspect --format '{{.Image}}' orbinum-web > "$backup/image-id"
 docker image tag "$(cat "$backup/image-id")" "node-orbinum-web:rollback-$deploy_id"
 ```
@@ -53,7 +54,8 @@ as the base for a code-only update, keeping its Python/runtime dependencies:
 ```sh
 mkdir "$backup/build"
 cp "$checkout/web.py" "$backup/build/web.py"
-printf 'FROM node-orbinum-web:rollback-%s\nCOPY web.py /app/web.py\n' "$deploy_id" > "$backup/build/Dockerfile"
+cp "$checkout/collector_health.py" "$backup/build/collector_health.py"
+printf 'FROM node-orbinum-web:rollback-%s\nCOPY web.py collector_health.py /app/\n' "$deploy_id" > "$backup/build/Dockerfile"
 docker build -t "node-orbinum-web:candidate-$deploy_id" "$backup/build"
 ```
 
@@ -73,6 +75,7 @@ Then switch only the web service:
 ```sh
 docker tag "node-orbinum-web:candidate-$deploy_id" node-orbinum-web
 cp "$checkout/web.py" /opt/orbinum-monitor/web.py
+cp "$checkout/collector_health.py" /opt/orbinum-monitor/collector_health.py
 docker compose -f /root/node/docker-compose.yml \
   -f /root/node/docker-compose.monitoring.yml \
   up -d --no-deps --no-build orbinum-web
@@ -93,6 +96,7 @@ Use the same deployment ID and backup directory:
 set -eu
 docker tag "node-orbinum-web:rollback-$deploy_id" node-orbinum-web
 cp "$backup/web.py" /opt/orbinum-monitor/web.py
+if test -f "$backup/collector_health.py"; then cp "$backup/collector_health.py" /opt/orbinum-monitor/collector_health.py; else rm -f /opt/orbinum-monitor/collector_health.py; fi
 docker compose -f /root/node/docker-compose.yml \
   -f /root/node/docker-compose.monitoring.yml \
   up -d --no-deps --no-build orbinum-web
@@ -102,3 +106,7 @@ curl --fail --show-error --silent https://orbinum-watcher.xyz/api/status
 Neither update nor rollback migrates the database. Keep the rollback image and
 source until the deployment has been verified. Runtime/base-image upgrades are a
 separate change and should use the repository Dockerfile with their own testing.
+
+## Collector freshness endpoint
+
+`GET /health/collector` returns JSON with HTTP 200 (`MONITOR_OK`) when the latest SQLite sample is at most 180 seconds old. It returns HTTP 503 for `MONITOR_STALE`, `MONITOR_NO_DATA`, `MONITOR_CLOCK_SKEW`, or `MONITOR_UNAVAILABLE`. This is **collector health**, not validator health. `/health` remains a process-only check. Use an independent external uptime checker to poll this endpoint; the web process cannot alert if the entire VPS is down.
